@@ -38,6 +38,23 @@ function Get-RelativePathSafe([string]$root, [string]$fullPath) {
     return [IO.Path]::GetFileName($fullPath)
 }
 
+function Get-SelectedExtensions {
+    switch ([string]$fileType.SelectedItem) {
+        ".gcode" { return @(".gcode") }
+        "Both (.goo and .gcode)" { return @(".goo", ".gcode") }
+        default { return @(".goo") }
+    }
+}
+
+function Update-ScanButtonText {
+    $exts = Get-SelectedExtensions
+    if ($exts.Count -eq 1) {
+        $scanButton.Text = "1. Scan for $($exts[0]) files"
+    } else {
+        $scanButton.Text = "1. Scan for .goo and .gcode files"
+    }
+}
+
 function Update-UiState {
     $scanButton.Enabled = (-not $script:busy) -and (-not [string]::IsNullOrWhiteSpace($sourceBox.Text))
     $copyButton.Enabled = (-not $script:busy) -and ($script:foundFiles.Count -gt 0) -and (-not [string]::IsNullOrWhiteSpace($destinationBox.Text))
@@ -46,6 +63,7 @@ function Update-UiState {
     $destinationBrowse.Enabled = -not $script:busy
     $sourceBox.Enabled = -not $script:busy
     $destinationBox.Enabled = -not $script:busy
+    $fileType.Enabled = -not $script:busy
     $preserveCheck.Enabled = -not $script:busy
 }
 
@@ -90,12 +108,13 @@ $settings.Dock = "Top"
 $settings.AutoSize = $true
 $settings.AutoSizeMode = "GrowAndShrink"
 $settings.ColumnCount = 3
-$settings.RowCount = 2
+$settings.RowCount = 3
 $settings.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
 # Only the path field stretches; labels and Browse stay readable.
 [void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
 [void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
 [void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
+[void]$settings.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
 [void]$settings.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
 [void]$settings.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
 
@@ -151,6 +170,24 @@ $destinationBrowse.Padding = New-Object System.Windows.Forms.Padding(12, 4, 12, 
 $destinationBrowse.MinimumSize = New-Object System.Drawing.Size(100, 0)
 $settings.Controls.Add($destinationBrowse, 2, 1)
 
+$fileTypeLabel = New-Object System.Windows.Forms.Label
+$fileTypeLabel.Text = "File type"
+$fileTypeLabel.AutoSize = $true
+$fileTypeLabel.Anchor = "Left"
+$fileTypeLabel.TextAlign = "MiddleLeft"
+$fileTypeLabel.Margin = New-Object System.Windows.Forms.Padding(0, 8, 12, 8)
+$settings.Controls.Add($fileTypeLabel, 0, 2)
+
+$fileType = New-Object System.Windows.Forms.ComboBox
+$fileType.DropDownStyle = "DropDownList"
+$fileType.Width = 220
+$fileType.Margin = New-Object System.Windows.Forms.Padding(0, 4, 8, 4)
+[void]$fileType.Items.Add(".goo")
+[void]$fileType.Items.Add(".gcode")
+[void]$fileType.Items.Add("Both (.goo and .gcode)")
+$fileType.SelectedIndex = 0
+$settings.Controls.Add($fileType, 1, 2)
+
 $results = New-Object System.Windows.Forms.ListView
 $results.Dock = "Fill"
 $results.View = "Details"
@@ -167,9 +204,9 @@ $actions.WrapContents = $false
 $actions.Margin = New-Object System.Windows.Forms.Padding(0, 10, 0, 8)
 
 $scanButton = New-Object System.Windows.Forms.Button
-$scanButton.Text = "1. Scan for .goo files"
 $scanButton.AutoSize = $true
 $scanButton.Padding = New-Object System.Windows.Forms.Padding(14, 6, 14, 6)
+Update-ScanButtonText
 $actions.Controls.Add($scanButton)
 
 $copyButton = New-Object System.Windows.Forms.Button
@@ -225,6 +262,7 @@ $sourceBrowse.Add_Click({ Browse-Source })
 $destinationBrowse.Add_Click({ Browse-Destination })
 $sourceBox.Add_Click({ Browse-Source })
 $destinationBox.Add_Click({ Browse-Destination })
+$fileType.Add_SelectedIndexChanged({ Update-ScanButtonText })
 $cancelButton.Add_Click({ $script:cancelRequested = $true })
 
 $scanButton.Add_Click({
@@ -234,6 +272,9 @@ $scanButton.Add_Click({
         return
     }
 
+    $extensions = Get-SelectedExtensions
+    $typeLabel = [string]$fileType.SelectedItem
+
     $script:busy = $true
     $script:cancelRequested = $false
     $script:foundFiles.Clear()
@@ -241,7 +282,7 @@ $scanButton.Add_Click({
     $script:activeSourceRoot = [IO.Path]::GetFullPath($source)
     Update-UiState
     $progress.Style = "Marquee"
-    $statusLabel.Text = "Scanning $source for *.goo …"
+    $statusLabel.Text = "Scanning $source for $typeLabel …"
     $summaryLabel.Text = ""
     $form.Refresh()
 
@@ -256,14 +297,16 @@ $scanButton.Add_Click({
             $dir = $pending.Pop()
 
             try {
-                Get-ChildItem -LiteralPath $dir -File -Filter "*.goo" -ErrorAction SilentlyContinue | ForEach-Object {
-                    if ($script:cancelRequested) { return }
-                    $found.Add([PSCustomObject]@{ Path = $_.FullName; Size = $_.Length })
-                    if ($found.Count % 25 -eq 0 -or $found.Count -eq 1) {
-                        $statusLabel.Text = "Scanning… found $($found.Count) file(s). Last: $($_.FullName)"
-                        [System.Windows.Forms.Application]::DoEvents()
+                Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue |
+                    Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() } |
+                    ForEach-Object {
+                        if ($script:cancelRequested) { return }
+                        $found.Add([PSCustomObject]@{ Path = $_.FullName; Size = $_.Length })
+                        if ($found.Count % 25 -eq 0 -or $found.Count -eq 1) {
+                            $statusLabel.Text = "Scanning… found $($found.Count) file(s). Last: $($_.FullName)"
+                            [System.Windows.Forms.Application]::DoEvents()
+                        }
                     }
-                }
             } catch { }
 
             try {
@@ -291,9 +334,9 @@ $scanButton.Add_Click({
         if ($script:cancelRequested) {
             $statusLabel.Text = "Scan canceled. Found $($found.Count) file(s) so far."
         } elseif ($found.Count -eq 0) {
-            $statusLabel.Text = "No .goo files found under $source."
+            $statusLabel.Text = "No $typeLabel files found under $source."
         } else {
-            $statusLabel.Text = "Scan complete. $($found.Count) .goo file(s) ready to copy."
+            $statusLabel.Text = "Scan complete. $($found.Count) $typeLabel file(s) ready to copy."
         }
     }
     catch {

@@ -4,12 +4,10 @@ namespace GooCollector;
 
 public sealed class MainForm : Form
 {
-    private readonly ComboBox _sourceDrive = new();
-    private readonly Button _refreshDrives = new();
-    private readonly Button _browseSource = new();
-    private readonly TextBox _sourcePath = new();
-    private readonly Button _destinationBrowse = new();
+    private readonly TextBox _source = new();
+    private readonly Button _sourceBrowse = new();
     private readonly TextBox _destination = new();
+    private readonly Button _destinationBrowse = new();
     private readonly CheckBox _preserveStructure = new();
     private readonly Button _scanButton = new();
     private readonly Button _copyButton = new();
@@ -35,7 +33,6 @@ public sealed class MainForm : Form
 
         BuildLayout();
         WireEvents();
-        RefreshDrives();
         UpdateUiState(idle: true);
     }
 
@@ -57,42 +54,33 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 4,
-            RowCount = 3,
+            ColumnCount = 3,
+            RowCount = 2,
             Margin = new Padding(0, 0, 0, 12),
         };
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
 
-        settings.Controls.Add(MakeLabel("Scan from"), 0, 0);
-        _sourceDrive.DropDownStyle = ComboBoxStyle.DropDownList;
-        _sourceDrive.Dock = DockStyle.Fill;
-        settings.Controls.Add(_sourceDrive, 1, 0);
-        _refreshDrives.Text = "Refresh";
-        _refreshDrives.Dock = DockStyle.Fill;
-        settings.Controls.Add(_refreshDrives, 2, 0);
-        _browseSource.Text = "Folder…";
-        _browseSource.Dock = DockStyle.Fill;
-        settings.Controls.Add(_browseSource, 3, 0);
+        settings.Controls.Add(MakeLabel("Source"), 0, 0);
+        _source.ReadOnly = true;
+        _source.Cursor = Cursors.Hand;
+        _source.PlaceholderText = "Click Browse to pick a drive or folder to scan";
+        _source.Dock = DockStyle.Fill;
+        settings.Controls.Add(_source, 1, 0);
+        _sourceBrowse.Text = "Browse…";
+        _sourceBrowse.Dock = DockStyle.Fill;
+        settings.Controls.Add(_sourceBrowse, 2, 0);
 
-        settings.Controls.Add(MakeLabel("Folder"), 0, 1);
-        _sourcePath.ReadOnly = true;
-        _sourcePath.PlaceholderText = "Leave blank to scan the whole drive above";
-        _sourcePath.Dock = DockStyle.Fill;
-        settings.SetColumnSpan(_sourcePath, 3);
-        settings.Controls.Add(_sourcePath, 1, 1);
-
-        settings.Controls.Add(MakeLabel("Copy to"), 0, 2);
+        settings.Controls.Add(MakeLabel("Destination"), 0, 1);
         _destination.ReadOnly = true;
-        _destination.PlaceholderText = "Choose your thumb drive (or any folder)";
+        _destination.Cursor = Cursors.Hand;
+        _destination.PlaceholderText = "Click Browse to pick where to copy (e.g. thumb drive)";
         _destination.Dock = DockStyle.Fill;
-        settings.Controls.Add(_destination, 1, 2);
+        settings.Controls.Add(_destination, 1, 1);
         _destinationBrowse.Text = "Browse…";
         _destinationBrowse.Dock = DockStyle.Fill;
-        settings.SetColumnSpan(_destinationBrowse, 2);
-        settings.Controls.Add(_destinationBrowse, 2, 2);
+        settings.Controls.Add(_destinationBrowse, 2, 1);
 
         _results.Dock = DockStyle.Fill;
         _results.View = View.Details;
@@ -146,7 +134,7 @@ public sealed class MainForm : Form
         _progress.Height = 18;
         _status.AutoSize = true;
         _status.Margin = new Padding(0, 6, 0, 0);
-        _status.Text = "Choose where to scan, choose where to copy, then press Scan.";
+        _status.Text = "Pick a Source folder, pick a Destination folder, then press Scan.";
         statusPanel.Controls.Add(_progress, 0, 0);
         statusPanel.Controls.Add(_status, 0, 1);
 
@@ -167,79 +155,33 @@ public sealed class MainForm : Form
 
     private void WireEvents()
     {
-        _refreshDrives.Click += (_, _) => RefreshDrives();
-        _browseSource.Click += (_, _) => BrowseSourceFolder();
+        _sourceBrowse.Click += (_, _) => BrowseSource();
         _destinationBrowse.Click += (_, _) => BrowseDestination();
+        _source.Click += (_, _) => BrowseSource();
+        _destination.Click += (_, _) => BrowseDestination();
         _scanButton.Click += async (_, _) => await ScanAsync();
         _copyButton.Click += async (_, _) => await CopyAsync();
         _cancelButton.Click += (_, _) => _cts?.Cancel();
-        _sourceDrive.SelectedIndexChanged += (_, _) =>
-        {
-            if (_sourceDrive.Focused)
-            {
-                _sourcePath.Clear();
-            }
-        };
     }
 
-    private void RefreshDrives()
-    {
-        _sourceDrive.Items.Clear();
-
-        foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady).OrderBy(d => d.Name))
-        {
-            _sourceDrive.Items.Add(new DriveItem(drive.RootDirectory.FullName, FormatDriveLabel(drive)));
-        }
-
-        if (_sourceDrive.Items.Count == 0)
-        {
-            _status.Text = "No ready drives found.";
-            return;
-        }
-
-        for (var i = 0; i < _sourceDrive.Items.Count; i++)
-        {
-            if (_sourceDrive.Items[i] is DriveItem item &&
-                item.Root.StartsWith("C:", StringComparison.OrdinalIgnoreCase))
-            {
-                _sourceDrive.SelectedIndex = i;
-                return;
-            }
-        }
-
-        _sourceDrive.SelectedIndex = 0;
-    }
-
-    private static string FormatDriveLabel(DriveInfo drive)
-    {
-        var name = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? drive.DriveType.ToString() : drive.VolumeLabel;
-        try
-        {
-            return $"{drive.Name}  {name}  ({FormatBytes(drive.TotalSize)})";
-        }
-        catch
-        {
-            return $"{drive.Name}  {name}";
-        }
-    }
-
-    private void BrowseSourceFolder()
+    private void BrowseSource()
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Choose a folder to scan for .goo files",
+            Description = "Choose the source drive or folder to scan for .goo files",
             UseDescriptionForTitle = true,
             ShowNewFolderButton = false,
         };
 
-        if (!string.IsNullOrWhiteSpace(_sourcePath.Text) && Directory.Exists(_sourcePath.Text))
+        if (!string.IsNullOrWhiteSpace(_source.Text) && Directory.Exists(_source.Text))
         {
-            dialog.SelectedPath = _sourcePath.Text;
+            dialog.SelectedPath = _source.Text;
         }
 
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            _sourcePath.Text = dialog.SelectedPath;
+            _source.Text = dialog.SelectedPath;
+            UpdateUiState(idle: _cts is null);
         }
     }
 
@@ -247,7 +189,7 @@ public sealed class MainForm : Form
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Choose where to copy the .goo files (for example your thumb drive)",
+            Description = "Choose the destination folder (for example your thumb drive)",
             UseDescriptionForTitle = true,
             ShowNewFolderButton = true,
         };
@@ -264,27 +206,12 @@ public sealed class MainForm : Form
         }
     }
 
-    private string ResolveSourceRoot()
-    {
-        if (!string.IsNullOrWhiteSpace(_sourcePath.Text))
-        {
-            return _sourcePath.Text.Trim();
-        }
-
-        if (_sourceDrive.SelectedItem is DriveItem item)
-        {
-            return item.Root;
-        }
-
-        return string.Empty;
-    }
-
     private async Task ScanAsync()
     {
-        var source = ResolveSourceRoot();
+        var source = _source.Text.Trim();
         if (string.IsNullOrWhiteSpace(source) || !Directory.Exists(source))
         {
-            MessageBox.Show(this, "Choose a valid source drive or folder first.", "Goo Collector",
+            MessageBox.Show(this, "Pick a Source folder first (Browse…).", "Goo Collector",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
@@ -375,19 +302,19 @@ public sealed class MainForm : Form
         var destination = _destination.Text.Trim();
         if (string.IsNullOrWhiteSpace(destination) || !Directory.Exists(destination))
         {
-            MessageBox.Show(this, "Choose a valid destination folder (for example your thumb drive).",
+            MessageBox.Show(this, "Pick a Destination folder first (Browse…).",
                 "Goo Collector", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
         var sourceRoot = string.IsNullOrEmpty(_activeSourceRoot)
-            ? ResolveSourceRoot()
+            ? _source.Text.Trim()
             : _activeSourceRoot;
 
         if (PathsOverlap(sourceRoot, destination))
         {
             MessageBox.Show(this,
-                "Destination is inside the scan source (or the same path). Choose a different destination such as a thumb drive.",
+                "Destination is inside the Source (or the same path). Choose a different Destination such as a thumb drive.",
                 "Goo Collector", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
@@ -492,13 +419,15 @@ public sealed class MainForm : Form
 
     private void UpdateUiState(bool idle)
     {
-        _scanButton.Enabled = idle;
-        _copyButton.Enabled = idle && _foundFiles.Count > 0 && !string.IsNullOrWhiteSpace(_destination.Text);
+        _scanButton.Enabled = idle && !string.IsNullOrWhiteSpace(_source.Text);
+        _copyButton.Enabled = idle
+            && _foundFiles.Count > 0
+            && !string.IsNullOrWhiteSpace(_destination.Text);
         _cancelButton.Enabled = !idle;
-        _sourceDrive.Enabled = idle;
-        _refreshDrives.Enabled = idle;
-        _browseSource.Enabled = idle;
+        _sourceBrowse.Enabled = idle;
         _destinationBrowse.Enabled = idle;
+        _source.Enabled = idle;
+        _destination.Enabled = idle;
         _preserveStructure.Enabled = idle;
     }
 
@@ -602,11 +531,6 @@ public sealed class MainForm : Form
         }
 
         return unit == 0 ? $"{bytes} {units[unit]}" : $"{size:0.##} {units[unit]}";
-    }
-
-    private sealed record DriveItem(string Root, string Display)
-    {
-        public override string ToString() => Display;
     }
 
     private sealed record FoundFile(string FullPath, long Size);

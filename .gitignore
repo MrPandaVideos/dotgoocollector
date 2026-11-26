@@ -15,9 +15,10 @@ x86/
 *.pdb
 GooCollector/dist/
 GooCollector/dist-*/
-# Keep the packaged Windows build zip in release/
-!GooCollector/release/
-!GooCollector/release/*.zip
+GooCollector/release/
+
+# Keep the packaged Windows app at the repo root for easy download
+!/GooCollector.exe
 
 # OS / editor
 .DS_Store

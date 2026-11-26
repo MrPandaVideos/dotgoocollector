@@ -6,7 +6,6 @@ obj/
 *.userosscache
 *.sln.docstates
 [Dd]ebug/
-[Rr]elease/
 x64/
 x86/
 [Aa][Rr][Mm]/
@@ -14,7 +13,11 @@ x86/
 *.dll
 *.exe
 *.pdb
-!GooCollector/Run-GooCollector.bat
+GooCollector/dist/
+GooCollector/dist-*/
+# Keep the packaged Windows build zip in release/
+!GooCollector/release/
+!GooCollector/release/*.zip
 
 # OS / editor
 .DS_Store

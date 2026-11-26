@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace GooCollector;
@@ -7,13 +6,11 @@ public sealed class MainForm : Form
 {
     private readonly ComboBox _sourceDrive = new();
     private readonly Button _refreshDrives = new();
-    private readonly TextBox _extension = new();
     private readonly Button _browseSource = new();
-    private readonly TextBox _customSource = new();
+    private readonly TextBox _sourcePath = new();
     private readonly Button _destinationBrowse = new();
     private readonly TextBox _destination = new();
     private readonly CheckBox _preserveStructure = new();
-    private readonly CheckBox _overwrite = new();
     private readonly Button _scanButton = new();
     private readonly Button _copyButton = new();
     private readonly Button _cancelButton = new();
@@ -23,14 +20,16 @@ public sealed class MainForm : Form
     private readonly Label _summary = new();
 
     private CancellationTokenSource? _cts;
-    private readonly BindingList<FoundFile> _foundFiles = new();
+    private readonly List<FoundFile> _foundFiles = new();
     private string _activeSourceRoot = string.Empty;
+
+    private const string Extension = ".goo";
 
     public MainForm()
     {
         Text = "Goo Collector";
-        MinimumSize = new Size(780, 560);
-        Size = new Size(900, 640);
+        MinimumSize = new Size(720, 520);
+        Size = new Size(820, 580);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 10F);
 
@@ -46,166 +45,96 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 4,
             Padding = new Padding(16),
         };
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        // Source row
-        var sourcePanel = new TableLayoutPanel
+        var settings = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 4,
-            RowCount = 2,
-            Margin = new Padding(0, 0, 0, 8),
+            RowCount = 3,
+            Margin = new Padding(0, 0, 0, 12),
         };
-        sourcePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        sourcePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        sourcePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-        sourcePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
 
-        sourcePanel.Controls.Add(new Label
-        {
-            Text = "Source drive",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 8, 8, 8),
-        }, 0, 0);
-
+        settings.Controls.Add(MakeLabel("Scan from"), 0, 0);
         _sourceDrive.DropDownStyle = ComboBoxStyle.DropDownList;
         _sourceDrive.Dock = DockStyle.Fill;
-        sourcePanel.Controls.Add(_sourceDrive, 1, 0);
-
+        settings.Controls.Add(_sourceDrive, 1, 0);
         _refreshDrives.Text = "Refresh";
         _refreshDrives.Dock = DockStyle.Fill;
-        sourcePanel.Controls.Add(_refreshDrives, 2, 0);
-
-        _browseSource.Text = "Browse…";
+        settings.Controls.Add(_refreshDrives, 2, 0);
+        _browseSource.Text = "Folder…";
         _browseSource.Dock = DockStyle.Fill;
-        sourcePanel.Controls.Add(_browseSource, 3, 0);
+        settings.Controls.Add(_browseSource, 3, 0);
 
-        sourcePanel.Controls.Add(new Label
-        {
-            Text = "Or folder",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 8, 8, 8),
-        }, 0, 1);
+        settings.Controls.Add(MakeLabel("Folder"), 0, 1);
+        _sourcePath.ReadOnly = true;
+        _sourcePath.PlaceholderText = "Leave blank to scan the whole drive above";
+        _sourcePath.Dock = DockStyle.Fill;
+        settings.SetColumnSpan(_sourcePath, 3);
+        settings.Controls.Add(_sourcePath, 1, 1);
 
-        _customSource.ReadOnly = true;
-        _customSource.PlaceholderText = "Optional: scan a specific folder instead of a whole drive";
-        _customSource.Dock = DockStyle.Fill;
-        sourcePanel.SetColumnSpan(_customSource, 3);
-        sourcePanel.Controls.Add(_customSource, 1, 1);
-
-        // Destination / options row
-        var destPanel = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            ColumnCount = 4,
-            RowCount = 2,
-            Margin = new Padding(0, 0, 0, 8),
-        };
-        destPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        destPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        destPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        destPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-
-        destPanel.Controls.Add(new Label
-        {
-            Text = "Destination",
-            AutoSize = true,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 8, 8, 8),
-        }, 0, 0);
-
+        settings.Controls.Add(MakeLabel("Copy to"), 0, 2);
         _destination.ReadOnly = true;
-        _destination.PlaceholderText = "Choose where to copy .goo files (e.g. your thumb drive)";
+        _destination.PlaceholderText = "Choose your thumb drive (or any folder)";
         _destination.Dock = DockStyle.Fill;
-        destPanel.Controls.Add(_destination, 1, 0);
-
+        settings.Controls.Add(_destination, 1, 2);
         _destinationBrowse.Text = "Browse…";
         _destinationBrowse.Dock = DockStyle.Fill;
-        destPanel.Controls.Add(_destinationBrowse, 2, 0);
+        settings.SetColumnSpan(_destinationBrowse, 2);
+        settings.Controls.Add(_destinationBrowse, 2, 2);
 
-        var options = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            WrapContents = false,
-        };
-        destPanel.SetColumnSpan(options, 4);
-        destPanel.Controls.Add(options, 0, 1);
-
-        options.Controls.Add(new Label
-        {
-            Text = "Extension",
-            AutoSize = true,
-            Margin = new Padding(0, 8, 8, 0),
-        });
-
-        _extension.Text = ".goo";
-        _extension.Width = 80;
-        _extension.Margin = new Padding(0, 4, 16, 0);
-        options.Controls.Add(_extension);
-
-        _preserveStructure.Text = "Keep folder structure";
-        _preserveStructure.Checked = true;
-        _preserveStructure.AutoSize = true;
-        _preserveStructure.Margin = new Padding(0, 6, 16, 0);
-        options.Controls.Add(_preserveStructure);
-
-        _overwrite.Text = "Overwrite existing files";
-        _overwrite.AutoSize = true;
-        _overwrite.Margin = new Padding(0, 6, 16, 0);
-        options.Controls.Add(_overwrite);
-
-        // Results list
         _results.Dock = DockStyle.Fill;
         _results.View = View.Details;
         _results.FullRowSelect = true;
         _results.GridLines = true;
-        _results.Columns.Add("File", 280);
-        _results.Columns.Add("Path", 420);
-        _results.Columns.Add("Size", 100);
-        _results.VirtualMode = false;
+        _results.Columns.Add("File", 240);
+        _results.Columns.Add("Path", 400);
+        _results.Columns.Add("Size", 90);
 
-        // Actions
         var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            Margin = new Padding(0, 8, 0, 8),
+            Margin = new Padding(0, 10, 0, 8),
         };
 
-        _scanButton.Text = "Scan for .goo files";
+        _scanButton.Text = "1. Scan for .goo files";
         _scanButton.AutoSize = true;
-        _scanButton.Padding = new Padding(12, 4, 12, 4);
+        _scanButton.Padding = new Padding(14, 6, 14, 6);
         actions.Controls.Add(_scanButton);
 
-        _copyButton.Text = "Copy to destination";
+        _copyButton.Text = "2. Copy to destination";
         _copyButton.AutoSize = true;
-        _copyButton.Padding = new Padding(12, 4, 12, 4);
+        _copyButton.Padding = new Padding(14, 6, 14, 6);
         actions.Controls.Add(_copyButton);
 
         _cancelButton.Text = "Cancel";
         _cancelButton.AutoSize = true;
-        _cancelButton.Padding = new Padding(12, 4, 12, 4);
+        _cancelButton.Padding = new Padding(14, 6, 14, 6);
         actions.Controls.Add(_cancelButton);
 
+        _preserveStructure.Text = "Keep folder structure";
+        _preserveStructure.Checked = true;
+        _preserveStructure.AutoSize = true;
+        _preserveStructure.Margin = new Padding(16, 10, 0, 0);
+        actions.Controls.Add(_preserveStructure);
+
         _summary.AutoSize = true;
-        _summary.Margin = new Padding(16, 10, 0, 0);
+        _summary.Margin = new Padding(16, 12, 0, 0);
         actions.Controls.Add(_summary);
 
-        // Status / progress
         var statusPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -215,21 +144,26 @@ public sealed class MainForm : Form
         };
         _progress.Dock = DockStyle.Top;
         _progress.Height = 18;
-        _progress.Style = ProgressBarStyle.Continuous;
         _status.AutoSize = true;
         _status.Margin = new Padding(0, 6, 0, 0);
-        _status.Text = "Pick a source drive and destination, then scan.";
+        _status.Text = "Choose where to scan, choose where to copy, then press Scan.";
         statusPanel.Controls.Add(_progress, 0, 0);
         statusPanel.Controls.Add(_status, 0, 1);
 
-        root.Controls.Add(sourcePanel, 0, 0);
-        root.Controls.Add(destPanel, 0, 1);
-        root.Controls.Add(_results, 0, 2);
-        root.Controls.Add(actions, 0, 3);
-        root.Controls.Add(statusPanel, 0, 4);
-
+        root.Controls.Add(settings, 0, 0);
+        root.Controls.Add(_results, 0, 1);
+        root.Controls.Add(actions, 0, 2);
+        root.Controls.Add(statusPanel, 0, 3);
         Controls.Add(root);
     }
+
+    private static Label MakeLabel(string text) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        Anchor = AnchorStyles.Left,
+        Margin = new Padding(0, 8, 8, 8),
+    };
 
     private void WireEvents()
     {
@@ -239,22 +173,22 @@ public sealed class MainForm : Form
         _scanButton.Click += async (_, _) => await ScanAsync();
         _copyButton.Click += async (_, _) => await CopyAsync();
         _cancelButton.Click += (_, _) => _cts?.Cancel();
-        _extension.TextChanged += (_, _) =>
+        _sourceDrive.SelectedIndexChanged += (_, _) =>
         {
-            var ext = NormalizeExtension(_extension.Text);
-            _scanButton.Text = string.IsNullOrEmpty(ext) ? "Scan" : $"Scan for {ext} files";
+            if (_sourceDrive.Focused)
+            {
+                _sourcePath.Clear();
+            }
         };
     }
 
     private void RefreshDrives()
     {
-        var selected = _sourceDrive.SelectedItem as string;
         _sourceDrive.Items.Clear();
 
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady).OrderBy(d => d.Name))
         {
-            var label = $"{drive.Name} ({FormatDriveLabel(drive)})";
-            _sourceDrive.Items.Add(new DriveItem(drive.RootDirectory.FullName, label));
+            _sourceDrive.Items.Add(new DriveItem(drive.RootDirectory.FullName, FormatDriveLabel(drive)));
         }
 
         if (_sourceDrive.Items.Count == 0)
@@ -263,19 +197,6 @@ public sealed class MainForm : Form
             return;
         }
 
-        if (!string.IsNullOrEmpty(selected))
-        {
-            for (var i = 0; i < _sourceDrive.Items.Count; i++)
-            {
-                if (_sourceDrive.Items[i] is DriveItem item && item.Display == selected)
-                {
-                    _sourceDrive.SelectedIndex = i;
-                    return;
-                }
-            }
-        }
-
-        // Prefer C:\ when present
         for (var i = 0; i < _sourceDrive.Items.Count; i++)
         {
             if (_sourceDrive.Items[i] is DriveItem item &&
@@ -294,11 +215,11 @@ public sealed class MainForm : Form
         var name = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? drive.DriveType.ToString() : drive.VolumeLabel;
         try
         {
-            return $"{name} — {FormatBytes(drive.TotalSize)}";
+            return $"{drive.Name}  {name}  ({FormatBytes(drive.TotalSize)})";
         }
         catch
         {
-            return name;
+            return $"{drive.Name}  {name}";
         }
     }
 
@@ -311,14 +232,14 @@ public sealed class MainForm : Form
             ShowNewFolderButton = false,
         };
 
-        if (!string.IsNullOrWhiteSpace(_customSource.Text) && Directory.Exists(_customSource.Text))
+        if (!string.IsNullOrWhiteSpace(_sourcePath.Text) && Directory.Exists(_sourcePath.Text))
         {
-            dialog.SelectedPath = _customSource.Text;
+            dialog.SelectedPath = _sourcePath.Text;
         }
 
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            _customSource.Text = dialog.SelectedPath;
+            _sourcePath.Text = dialog.SelectedPath;
         }
     }
 
@@ -345,9 +266,9 @@ public sealed class MainForm : Form
 
     private string ResolveSourceRoot()
     {
-        if (!string.IsNullOrWhiteSpace(_customSource.Text))
+        if (!string.IsNullOrWhiteSpace(_sourcePath.Text))
         {
-            return _customSource.Text.Trim();
+            return _sourcePath.Text.Trim();
         }
 
         if (_sourceDrive.SelectedItem is DriveItem item)
@@ -368,14 +289,6 @@ public sealed class MainForm : Form
             return;
         }
 
-        var extension = NormalizeExtension(_extension.Text);
-        if (string.IsNullOrEmpty(extension))
-        {
-            MessageBox.Show(this, "Enter a file extension such as .goo.", "Goo Collector",
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
@@ -385,7 +298,7 @@ public sealed class MainForm : Form
         _activeSourceRoot = Path.GetFullPath(source);
         UpdateUiState(idle: false);
         _progress.Style = ProgressBarStyle.Marquee;
-        _status.Text = $"Scanning {source} for *{extension} …";
+        _status.Text = $"Scanning {source} for *{Extension} …";
         _summary.Text = string.Empty;
 
         var found = new List<FoundFile>();
@@ -395,15 +308,14 @@ public sealed class MainForm : Form
         {
             await Task.Run(() =>
             {
-                foreach (var path in EnumerateFilesSafe(source, $"*{extension}", token))
+                foreach (var path in EnumerateFilesSafe(source, $"*{Extension}", token))
                 {
                     token.ThrowIfCancellationRequested();
 
                     long size = 0;
                     try { size = new FileInfo(path).Length; } catch { /* ignore */ }
 
-                    var file = new FoundFile(path, size);
-                    found.Add(file);
+                    found.Add(new FoundFile(path, size));
 
                     if (found.Count % 25 == 0 || found.Count == 1)
                     {
@@ -419,19 +331,18 @@ public sealed class MainForm : Form
             foreach (var file in found)
             {
                 _foundFiles.Add(file);
-                _results.Items.Add(new ListViewItem(new[]
-                {
+                _results.Items.Add(new ListViewItem([
                     Path.GetFileName(file.FullPath),
                     file.FullPath,
                     FormatBytes(file.Size),
-                }));
+                ]));
             }
 
             sw.Stop();
             _summary.Text = $"{found.Count} file(s) · {FormatBytes(found.Sum(f => f.Size))} · {sw.Elapsed:mm\\:ss}";
             _status.Text = found.Count == 0
-                ? $"No {extension} files found under {source}."
-                : $"Scan complete. {found.Count} {extension} file(s) ready to copy.";
+                ? $"No {Extension} files found under {source}."
+                : $"Scan complete. {found.Count} {Extension} file(s) ready to copy.";
         }
         catch (OperationCanceledException)
         {
@@ -482,7 +393,7 @@ public sealed class MainForm : Form
         }
 
         var confirm = MessageBox.Show(this,
-            $"Copy {_foundFiles.Count} file(s) to:\n{destination}\n\nContinue?",
+            $"Copy {_foundFiles.Count} .goo file(s) to:\n{destination}\n\nContinue?",
             "Confirm copy", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (confirm != DialogResult.Yes)
         {
@@ -500,7 +411,6 @@ public sealed class MainForm : Form
         _progress.Value = 0;
 
         var preserve = _preserveStructure.Checked;
-        var overwrite = _overwrite.Checked;
         var files = _foundFiles.ToList();
         var copied = 0;
         var skipped = 0;
@@ -521,7 +431,6 @@ public sealed class MainForm : Form
                             ? GetRelativePathSafe(sourceRoot, file.FullPath)
                             : Path.GetFileName(file.FullPath);
 
-                        // Avoid drive-letter rooted relative paths on Windows
                         relative = relative.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         if (relative.Length >= 2 && relative[1] == ':')
                         {
@@ -535,13 +444,13 @@ public sealed class MainForm : Form
                             Directory.CreateDirectory(targetDir);
                         }
 
-                        if (!overwrite && File.Exists(targetPath))
+                        if (File.Exists(targetPath))
                         {
                             Interlocked.Increment(ref skipped);
                         }
                         else
                         {
-                            File.Copy(file.FullPath, targetPath, overwrite);
+                            File.Copy(file.FullPath, targetPath, overwrite: false);
                             Interlocked.Increment(ref copied);
                         }
                     }
@@ -561,7 +470,7 @@ public sealed class MainForm : Form
 
             _status.Text = $"Copy finished. Copied {copied}, skipped {skipped}, failed {failed}.";
             MessageBox.Show(this,
-                $"Done.\n\nCopied: {copied}\nSkipped: {skipped}\nFailed: {failed}\n\nDestination:\n{destination}",
+                $"Done.\n\nCopied: {copied}\nSkipped (already there): {skipped}\nFailed: {failed}\n\nDestination:\n{destination}",
                 "Goo Collector", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (OperationCanceledException)
@@ -590,9 +499,7 @@ public sealed class MainForm : Form
         _refreshDrives.Enabled = idle;
         _browseSource.Enabled = idle;
         _destinationBrowse.Enabled = idle;
-        _extension.Enabled = idle;
         _preserveStructure.Enabled = idle;
-        _overwrite.Enabled = idle;
     }
 
     private static IEnumerable<string> EnumerateFilesSafe(string root, string pattern, CancellationToken token)
@@ -612,7 +519,7 @@ public sealed class MainForm : Form
             }
             catch
             {
-                // Skip inaccessible directories (system, permissions, etc.)
+                // Skip inaccessible directories
             }
 
             foreach (var file in files)
@@ -633,7 +540,6 @@ public sealed class MainForm : Form
 
             foreach (var sub in subdirs)
             {
-                // Skip reparse points / junctions that can loop or leave the drive
                 try
                 {
                     var attr = File.GetAttributes(sub);
@@ -650,22 +556,6 @@ public sealed class MainForm : Form
                 pending.Push(sub);
             }
         }
-    }
-
-    private static string NormalizeExtension(string value)
-    {
-        var ext = (value ?? string.Empty).Trim();
-        if (string.IsNullOrEmpty(ext))
-        {
-            return string.Empty;
-        }
-
-        if (!ext.StartsWith('.'))
-        {
-            ext = "." + ext;
-        }
-
-        return ext.ToLowerInvariant();
     }
 
     private static string GetRelativePathSafe(string root, string fullPath)

@@ -1,51 +1,43 @@
 # Goo Collector
 
-Windows app that scans a drive (or folder) for `.goo` files and copies them to a destination you choose — typically a thumb drive.
+Simple Windows GUI app that scans a drive (or folder) for `.goo` files and copies them to a destination you choose — typically a thumb drive.
 
-## Quick start (no install)
+## Download the .exe
 
-On Windows:
+Grab the prebuilt Windows app from the release zip:
 
-1. Plug in your thumb drive.
-2. Double-click `GooCollector/Run-GooCollector.bat`.
-3. Pick a **source drive** (or Browse to a folder).
-4. Pick a **destination** (your thumb drive folder).
-5. Click **Scan for .goo files**.
-6. Click **Copy to destination**.
+- [`GooCollector/release/GooCollector-win-x64.zip`](GooCollector/release/GooCollector-win-x64.zip)
 
-That launcher uses built-in PowerShell + WinForms. Nothing else to install.
+Unzip, then double-click **`GooCollector.exe`**. No install required (self-contained).
 
-## Options
+## How to use
 
-| Option | What it does |
-| --- | --- |
-| Extension | Defaults to `.goo`; change if you need another type |
-| Keep folder structure | Recreates the source folders under the destination |
-| Overwrite existing files | Replaces same-named files already on the destination |
+1. Choose a **Scan from** drive (or click **Folder…** for a specific folder).
+2. Click **Browse…** under **Copy to** and select your thumb drive.
+3. Click **1. Scan for .goo files**.
+4. Click **2. Copy to destination**.
 
-Inaccessible system folders are skipped. You can cancel a long scan or copy at any time.
+Optional: leave **Keep folder structure** checked so files from different folders don’t overwrite each other.
 
-## Build the .NET desktop app (optional)
+## Rebuild the .exe yourself
 
-If you prefer a compiled Windows EXE:
+Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows (or any OS that can target `win-x64`):
 
 ```bat
 cd GooCollector
-dotnet build -c Release
+Publish-Exe.bat
 ```
 
-Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
-
-Run:
+Or:
 
 ```bat
-dotnet run --project GooCollector.csproj -c Release
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o dist
 ```
 
-Or launch the built EXE from `bin\Release\net8.0-windows\GooCollector.exe`.
+Output: `GooCollector/dist/GooCollector.exe`
 
 ## Notes
 
-- Scanning all of `C:\` can take a while and may need Administrator rights for some folders.
-- Destination should not be inside the scan source (for example, don’t copy into a folder you’re still scanning).
-- “Keep folder structure” is recommended so files with the same name from different folders don’t collide.
+- Scanning all of `C:\` can take a while; some protected folders are skipped automatically.
+- Don’t choose a destination inside the folder you’re scanning.
+- Existing files at the destination are skipped (not overwritten).

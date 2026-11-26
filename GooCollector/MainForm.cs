@@ -139,9 +139,9 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 8),
         };
 
+        _scanButton.Text = "1. Scan for files";
         _scanButton.AutoSize = true;
         _scanButton.Padding = new Padding(14, 6, 14, 6);
-        RefreshScanButtonText();
         actions.Controls.Add(_scanButton);
 
         _copyButton.Text = "2. Copy to destination";
@@ -226,7 +226,6 @@ public sealed class MainForm : Form
         _destinationBrowse.Click += (_, _) => BrowseDestination();
         _source.Click += (_, _) => BrowseSource();
         _destination.Click += (_, _) => BrowseDestination();
-        _fileType.SelectedIndexChanged += (_, _) => RefreshScanButtonText();
         _scanButton.Click += async (_, _) => await ScanAsync();
         _copyButton.Click += async (_, _) => await CopyAsync();
         _cancelButton.Click += (_, _) => _cts?.Cancel();
@@ -234,14 +233,6 @@ public sealed class MainForm : Form
 
     private FileTypeOption SelectedFileType =>
         _fileType.SelectedItem as FileTypeOption ?? FileTypes[0];
-
-    private void RefreshScanButtonText()
-    {
-        var option = SelectedFileType;
-        _scanButton.Text = option.Extensions.Length == 1
-            ? $"1. Scan for {option.Extensions[0]} files"
-            : "1. Scan for .goo and .gcode files";
-    }
 
     private void BrowseSource()
     {

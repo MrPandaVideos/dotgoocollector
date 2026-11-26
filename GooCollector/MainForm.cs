@@ -31,10 +31,35 @@ public sealed class MainForm : Form
         Size = new Size(820, 580);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 10F);
+        TrySetWindowIcon();
 
         BuildLayout();
         WireEvents();
         UpdateUiState(idle: true);
+    }
+
+    private void TrySetWindowIcon()
+    {
+        try
+        {
+            // Prefer the Win32 icon embedded in the EXE (ApplicationIcon).
+            var embedded = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            if (embedded is not null)
+            {
+                Icon = embedded;
+                return;
+            }
+
+            var icoPath = Path.Combine(AppContext.BaseDirectory, "app.ico");
+            if (File.Exists(icoPath))
+            {
+                Icon = new Icon(icoPath);
+            }
+        }
+        catch
+        {
+            // Keep the default window icon if embedding lookup fails.
+        }
     }
 
     private void BuildLayout()

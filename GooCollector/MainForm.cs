@@ -8,6 +8,7 @@ public sealed class MainForm : Form
     private readonly Button _sourceBrowse = new();
     private readonly TextBox _destination = new();
     private readonly Button _destinationBrowse = new();
+    private readonly ComboBox _fileType = new();
     private readonly CheckBox _preserveStructure = new();
     private readonly Button _scanButton = new();
     private readonly Button _copyButton = new();
@@ -21,7 +22,12 @@ public sealed class MainForm : Form
     private readonly List<FoundFile> _foundFiles = new();
     private string _activeSourceRoot = string.Empty;
 
-    private const string Extension = ".goo";
+    private static readonly FileTypeOption[] FileTypes =
+    [
+        new(".goo", [".goo"]),
+        new(".gcode", [".gcode"]),
+        new("Both (.goo and .gcode)", [".goo", ".gcode"]),
+    ];
 
     public MainForm()
     {
@@ -83,12 +89,13 @@ public sealed class MainForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
-            RowCount = 2,
+            RowCount = 3,
             Margin = new Padding(0, 0, 0, 12),
         };
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -103,6 +110,18 @@ public sealed class MainForm : Form
         settings.Controls.Add(_destination, 1, 1);
         ConfigureBrowseButton(_destinationBrowse);
         settings.Controls.Add(_destinationBrowse, 2, 1);
+
+        settings.Controls.Add(MakeLabel("File type"), 0, 2);
+        _fileType.DropDownStyle = ComboBoxStyle.DropDownList;
+        _fileType.Dock = DockStyle.Left;
+        _fileType.Width = 220;
+        _fileType.Margin = new Padding(0, 4, 8, 4);
+        foreach (var option in FileTypes)
+        {
+            _fileType.Items.Add(option);
+        }
+        _fileType.SelectedIndex = 0;
+        settings.Controls.Add(_fileType, 1, 2);
 
         _results.Dock = DockStyle.Fill;
         _results.View = View.Details;
@@ -120,9 +139,9 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 8),
         };
 
-        _scanButton.Text = "1. Scan for .goo files";
         _scanButton.AutoSize = true;
         _scanButton.Padding = new Padding(14, 6, 14, 6);
+        RefreshScanButtonText();
         actions.Controls.Add(_scanButton);
 
         _copyButton.Text = "2. Copy to destination";
@@ -207,16 +226,29 @@ public sealed class MainForm : Form
         _destinationBrowse.Click += (_, _) => BrowseDestination();
         _source.Click += (_, _) => BrowseSource();
         _destination.Click += (_, _) => BrowseDestination();
+        _fileType.SelectedIndexChanged += (_, _) => RefreshScanButtonText();
         _scanButton.Click += async (_, _) => await ScanAsync();
         _copyButton.Click += async (_, _) => await CopyAsync();
         _cancelButton.Click += (_, _) => _cts?.Cancel();
     }
 
+    private FileTypeOption SelectedFileType =>
+        _fileType.SelectedItem as FileTypeOption ?? FileTypes[0];
+
+    private void RefreshScanButtonText()
+    {
+        var option = SelectedFileType;
+        _scanButton.Text = option.Extensions.Length == 1
+            ? $"1. Scan for {option.Extensions[0]} files"
+            : "1. Scan for .goo and .gcode files";
+    }
+
     private void BrowseSource()
     {
+        var label = SelectedFileType.DisplayName;
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Choose the source drive or folder to scan for .goo files",
+            Description = $"Choose the source drive or folder to scan for {label} files",
             UseDescriptionForTitle = true,
             ShowNewFolderButton = false,
         };
@@ -268,12 +300,15 @@ public sealed class MainForm : Form
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
+        var fileType = SelectedFileType;
+        var typeLabel = fileType.DisplayName;
+
         _foundFiles.Clear();
         _results.Items.Clear();
         _activeSourceRoot = Path.GetFullPath(source);
         UpdateUiState(idle: false);
         _progress.Style = ProgressBarStyle.Marquee;
-        _status.Text = $"Scanning {source} for *{Extension} …";
+        _status.Text = $"Scanning {source} for {typeLabel} …";
         _summary.Text = string.Empty;
 
         var found = new List<FoundFile>();
@@ -283,7 +318,7 @@ public sealed class MainForm : Form
         {
             await Task.Run(() =>
             {
-                foreach (var path in EnumerateFilesSafe(source, $"*{Extension}", token))
+                foreach (var path in EnumerateFilesSafe(source, fileType.Extensions, token))
                 {
                     token.ThrowIfCancellationRequested();
 
@@ -316,8 +351,8 @@ public sealed class MainForm : Form
             sw.Stop();
             _summary.Text = $"{found.Count} file(s) · {FormatBytes(found.Sum(f => f.Size))} · {sw.Elapsed:mm\\:ss}";
             _status.Text = found.Count == 0
-                ? $"No {Extension} files found under {source}."
-                : $"Scan complete. {found.Count} {Extension} file(s) ready to copy.";
+                ? $"No {typeLabel} files found under {source}."
+                : $"Scan complete. {found.Count} {typeLabel} file(s) ready to copy.";
         }
         catch (OperationCanceledException)
         {
@@ -368,7 +403,7 @@ public sealed class MainForm : Form
         }
 
         var confirm = MessageBox.Show(this,
-            $"Copy {_foundFiles.Count} .goo file(s) to:\n{destination}\n\nContinue?",
+            $"Copy {_foundFiles.Count} file(s) to:\n{destination}\n\nContinue?",
             "Confirm copy", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (confirm != DialogResult.Yes)
         {
@@ -476,13 +511,20 @@ public sealed class MainForm : Form
         _destinationBrowse.Enabled = idle;
         _source.Enabled = idle;
         _destination.Enabled = idle;
+        _fileType.Enabled = idle;
         _preserveStructure.Enabled = idle;
     }
 
-    private static IEnumerable<string> EnumerateFilesSafe(string root, string pattern, CancellationToken token)
+    private static IEnumerable<string> EnumerateFilesSafe(
+        string root,
+        IReadOnlyList<string> extensions,
+        CancellationToken token)
     {
         var pending = new Stack<string>();
         pending.Push(root);
+        var extensionSet = new HashSet<string>(
+            extensions.Select(e => e.StartsWith('.') ? e.ToLowerInvariant() : "." + e.ToLowerInvariant()),
+            StringComparer.OrdinalIgnoreCase);
 
         while (pending.Count > 0)
         {
@@ -492,7 +534,9 @@ public sealed class MainForm : Form
             IEnumerable<string> files = Array.Empty<string>();
             try
             {
-                files = Directory.EnumerateFiles(dir, pattern, SearchOption.TopDirectoryOnly);
+                // Walk once; filter by selected extension(s).
+                files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly)
+                    .Where(path => extensionSet.Contains(Path.GetExtension(path)));
             }
             catch
             {
@@ -582,4 +626,9 @@ public sealed class MainForm : Form
     }
 
     private sealed record FoundFile(string FullPath, long Size);
+
+    private sealed record FileTypeOption(string DisplayName, string[] Extensions)
+    {
+        public override string ToString() => DisplayName;
+    }
 }

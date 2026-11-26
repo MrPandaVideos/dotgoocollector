@@ -10,7 +10,10 @@
     <AssemblyName>GooCollector</AssemblyName>
     <RootNamespace>GooCollector</RootNamespace>
     <Product>Goo Collector</Product>
-    <Description>Scan a drive for .goo files and copy them to a destination such as a thumb drive.</Description>
+    <Description>Scan a drive for .goo and/or .gcode files and copy them to a destination such as a thumb drive.</Description>
+    <Authors>MrPandaVideos</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/MrPandaVideos/dotgoocollector</RepositoryUrl>
     <Version>1.0.0</Version>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

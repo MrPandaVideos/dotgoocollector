@@ -23,6 +23,14 @@ GooCollector/release/
 # OS / editor
 .DS_Store
 Thumbs.db
+Desktop.ini
 .vs/
 .idea/
 *.swp
+*~
+
+# Local secrets / env (none used today; keep ignored for safety)
+.env
+.env.*
+*.pfx
+*.snk

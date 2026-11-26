@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+*.dll
+*.exe
+*.pdb
+!GooCollector/Run-GooCollector.bat
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+*.swp

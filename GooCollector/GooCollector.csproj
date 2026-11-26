@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon />
+    <StartupObject>GooCollector.Program</StartupObject>
+    <AssemblyName>GooCollector</AssemblyName>
+    <RootNamespace>GooCollector</RootNamespace>
+    <Product>Goo Collector</Product>
+    <Description>Scan a drive for .goo files and copy them to a destination such as a thumb drive.</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>

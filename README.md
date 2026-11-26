@@ -2,35 +2,51 @@
 
 Simple Windows GUI app that scans a **Source** folder for `.goo` and/or `.gcode` files and copies them to a **Destination** you pick (typically a thumb drive).
 
+Runs entirely on your PC — no install, no account, no network calls.
+
 ## Download
 
-1. On GitHub, click **Code → Download ZIP** (or download this repo).
-2. Unzip the download — **`GooCollector.exe`** is in the root folder.
-3. Double-click **`GooCollector.exe`**. No install required.
+1. On GitHub, click **Code → Download ZIP**.
+2. Unzip — **`GooCollector.exe`** is in the root folder.
+3. Double-click **`GooCollector.exe`**.
+
+Windows SmartScreen may warn that the app is unsigned. Choose **More info → Run anyway** if you trust this repository.
 
 ## How to use
 
-1. Click **Browse…** next to **Source** (or click the Source field) and pick a drive/folder in File Explorer.
-2. Click **Browse…** next to **Destination** and pick your thumb drive (or any folder).
-3. Choose **File type**: `.goo`, `.gcode`, or both.
-4. Click **1. Scan for files**.
-5. Click **2. Copy to destination**.
+1. **Source** → Browse to the drive or folder to scan.
+2. **Destination** → Browse to your thumb drive (or any folder).
+3. **File type** → `.goo`, `.gcode`, or both.
+4. **1. Scan for files**
+5. **2. Copy to destination**
 
-Optional: leave **Keep folder structure** checked so files from different folders don’t overwrite each other.
+Optional: leave **Keep folder structure** checked so same-named files from different folders don’t collide.
 
-## Rebuild the .exe yourself
+## Privacy
 
-Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0):
+- Everything stays on your machine.
+- No telemetry, analytics, or internet access.
+- Existing files at the destination are skipped (not overwritten).
+
+## Rebuild from source
+
+Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (Windows target):
 
 ```bat
 cd GooCollector
 Publish-Exe.bat
 ```
 
-That writes `GooCollector.exe` to this folder’s parent (the repo root) and to `GooCollector/dist/`.
+Writes `GooCollector.exe` to the repo root and to `GooCollector\dist\`.
+
+There is also a zero-install PowerShell GUI: `GooCollector\Run-GooCollector.bat`.
 
 ## Notes
 
-- Scanning a whole drive (for example `C:\`) can take a while; some protected folders are skipped automatically.
-- Don’t choose a Destination inside the Source folder.
-- Existing files at the Destination are skipped (not overwritten).
+- Scanning a whole drive (for example `C:\`) can take a while; inaccessible/system folders are skipped.
+- Don’t choose a Destination inside the Source path.
+- Cancel is available during long scans or copies.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -2,13 +2,11 @@
 
 Simple Windows GUI app that scans a **Source** folder for `.goo` files and copies them to a **Destination** you pick (typically a thumb drive).
 
-## Download the .exe
+## Download
 
-Grab the prebuilt Windows app from the release zip:
-
-- [`GooCollector/release/GooCollector-win-x64.zip`](GooCollector/release/GooCollector-win-x64.zip)
-
-Unzip, then double-click **`GooCollector.exe`**. No install required (self-contained).
+1. On GitHub, click **Code → Download ZIP** (or download this repo).
+2. Unzip the download — **`GooCollector.exe`** is in the root folder.
+3. Double-click **`GooCollector.exe`**. No install required.
 
 ## How to use
 
@@ -28,7 +26,7 @@ cd GooCollector
 Publish-Exe.bat
 ```
 
-Output: `GooCollector/dist/GooCollector.exe`
+That writes `GooCollector.exe` to this folder’s parent (the repo root) and to `GooCollector/dist/`.
 
 ## Notes
 

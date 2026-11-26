@@ -88,47 +88,67 @@ $rootPanel.Padding = New-Object System.Windows.Forms.Padding(16)
 $settings = New-Object System.Windows.Forms.TableLayoutPanel
 $settings.Dock = "Top"
 $settings.AutoSize = $true
+$settings.AutoSizeMode = "GrowAndShrink"
 $settings.ColumnCount = 3
 $settings.RowCount = 2
 $settings.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
-[void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Absolute, 100)))
+# Only the path field stretches; labels and Browse stay readable.
+[void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
 [void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
-[void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Absolute, 110)))
+[void]$settings.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
+[void]$settings.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+[void]$settings.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
 
 $sourceLabel = New-Object System.Windows.Forms.Label
 $sourceLabel.Text = "Source"
 $sourceLabel.AutoSize = $true
 $sourceLabel.Anchor = "Left"
-$sourceLabel.Margin = New-Object System.Windows.Forms.Padding(0, 8, 8, 8)
+$sourceLabel.TextAlign = "MiddleLeft"
+$sourceLabel.Margin = New-Object System.Windows.Forms.Padding(0, 8, 12, 8)
 $settings.Controls.Add($sourceLabel, 0, 0)
 
 $sourceBox = New-Object System.Windows.Forms.TextBox
 $sourceBox.ReadOnly = $true
 $sourceBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $sourceBox.Dock = "Fill"
+$sourceBox.Margin = New-Object System.Windows.Forms.Padding(0, 4, 8, 4)
+$sourceBox.MinimumSize = New-Object System.Drawing.Size(120, 0)
 $settings.Controls.Add($sourceBox, 1, 0)
 
 $sourceBrowse = New-Object System.Windows.Forms.Button
 $sourceBrowse.Text = "Browse…"
-$sourceBrowse.Dock = "Fill"
+$sourceBrowse.AutoSize = $true
+$sourceBrowse.AutoSizeMode = "GrowAndShrink"
+$sourceBrowse.Anchor = "Left"
+$sourceBrowse.Margin = New-Object System.Windows.Forms.Padding(0, 2, 0, 2)
+$sourceBrowse.Padding = New-Object System.Windows.Forms.Padding(12, 4, 12, 4)
+$sourceBrowse.MinimumSize = New-Object System.Drawing.Size(100, 0)
 $settings.Controls.Add($sourceBrowse, 2, 0)
 
 $destLabel = New-Object System.Windows.Forms.Label
 $destLabel.Text = "Destination"
 $destLabel.AutoSize = $true
 $destLabel.Anchor = "Left"
-$destLabel.Margin = New-Object System.Windows.Forms.Padding(0, 8, 8, 8)
+$destLabel.TextAlign = "MiddleLeft"
+$destLabel.Margin = New-Object System.Windows.Forms.Padding(0, 8, 12, 8)
 $settings.Controls.Add($destLabel, 0, 1)
 
 $destinationBox = New-Object System.Windows.Forms.TextBox
 $destinationBox.ReadOnly = $true
 $destinationBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $destinationBox.Dock = "Fill"
+$destinationBox.Margin = New-Object System.Windows.Forms.Padding(0, 4, 8, 4)
+$destinationBox.MinimumSize = New-Object System.Drawing.Size(120, 0)
 $settings.Controls.Add($destinationBox, 1, 1)
 
 $destinationBrowse = New-Object System.Windows.Forms.Button
 $destinationBrowse.Text = "Browse…"
-$destinationBrowse.Dock = "Fill"
+$destinationBrowse.AutoSize = $true
+$destinationBrowse.AutoSizeMode = "GrowAndShrink"
+$destinationBrowse.Anchor = "Left"
+$destinationBrowse.Margin = New-Object System.Windows.Forms.Padding(0, 2, 0, 2)
+$destinationBrowse.Padding = New-Object System.Windows.Forms.Padding(12, 4, 12, 4)
+$destinationBrowse.MinimumSize = New-Object System.Drawing.Size(100, 0)
 $settings.Controls.Add($destinationBrowse, 2, 1)
 
 $results = New-Object System.Windows.Forms.ListView

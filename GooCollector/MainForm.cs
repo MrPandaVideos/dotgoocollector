@@ -26,7 +26,8 @@ public sealed class MainForm : Form
     public MainForm()
     {
         Text = "Goo Collector";
-        MinimumSize = new Size(720, 520);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        MinimumSize = new Size(640, 480);
         Size = new Size(820, 580);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 10F);
@@ -50,36 +51,32 @@ public sealed class MainForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
+        // Label + path + Browse: only the path column stretches with the window.
         var settings = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
             RowCount = 2,
             Margin = new Padding(0, 0, 0, 12),
         };
-        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        settings.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         settings.Controls.Add(MakeLabel("Source"), 0, 0);
-        _source.ReadOnly = true;
-        _source.Cursor = Cursors.Hand;
-        _source.PlaceholderText = "Click Browse to pick a drive or folder to scan";
-        _source.Dock = DockStyle.Fill;
+        ConfigurePathField(_source, "Click Browse to pick a drive or folder to scan");
         settings.Controls.Add(_source, 1, 0);
-        _sourceBrowse.Text = "Browse…";
-        _sourceBrowse.Dock = DockStyle.Fill;
+        ConfigureBrowseButton(_sourceBrowse);
         settings.Controls.Add(_sourceBrowse, 2, 0);
 
         settings.Controls.Add(MakeLabel("Destination"), 0, 1);
-        _destination.ReadOnly = true;
-        _destination.Cursor = Cursors.Hand;
-        _destination.PlaceholderText = "Click Browse to pick where to copy (e.g. thumb drive)";
-        _destination.Dock = DockStyle.Fill;
+        ConfigurePathField(_destination, "Click Browse to pick where to copy (e.g. thumb drive)");
         settings.Controls.Add(_destination, 1, 1);
-        _destinationBrowse.Text = "Browse…";
-        _destinationBrowse.Dock = DockStyle.Fill;
+        ConfigureBrowseButton(_destinationBrowse);
         settings.Controls.Add(_destinationBrowse, 2, 1);
 
         _results.Dock = DockStyle.Fill;
@@ -150,8 +147,34 @@ public sealed class MainForm : Form
         Text = text,
         AutoSize = true,
         Anchor = AnchorStyles.Left,
-        Margin = new Padding(0, 8, 8, 8),
+        TextAlign = ContentAlignment.MiddleLeft,
+        Margin = new Padding(0, 8, 12, 8),
+        // Keep "Destination" on one line; don't let the layout squeeze the label.
+        MaximumSize = Size.Empty,
+        UseCompatibleTextRendering = false,
     };
+
+    private static void ConfigurePathField(TextBox box, string placeholder)
+    {
+        box.ReadOnly = true;
+        box.Cursor = Cursors.Hand;
+        box.PlaceholderText = placeholder;
+        box.Dock = DockStyle.Fill;
+        box.Margin = new Padding(0, 4, 8, 4);
+        box.MinimumSize = new Size(120, 0);
+    }
+
+    private static void ConfigureBrowseButton(Button button)
+    {
+        button.Text = "Browse…";
+        button.AutoSize = true;
+        button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        button.Anchor = AnchorStyles.Left;
+        button.Margin = new Padding(0, 2, 0, 2);
+        button.Padding = new Padding(12, 4, 12, 4);
+        // Prefer one-line button text even when DPI scales fonts up.
+        button.MinimumSize = new Size(100, 0);
+    }
 
     private void WireEvents()
     {

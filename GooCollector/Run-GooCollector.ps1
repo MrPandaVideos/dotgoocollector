@@ -46,15 +46,6 @@ function Get-SelectedExtensions {
     }
 }
 
-function Update-ScanButtonText {
-    $exts = Get-SelectedExtensions
-    if ($exts.Count -eq 1) {
-        $scanButton.Text = "1. Scan for $($exts[0]) files"
-    } else {
-        $scanButton.Text = "1. Scan for .goo and .gcode files"
-    }
-}
-
 function Update-UiState {
     $scanButton.Enabled = (-not $script:busy) -and (-not [string]::IsNullOrWhiteSpace($sourceBox.Text))
     $copyButton.Enabled = (-not $script:busy) -and ($script:foundFiles.Count -gt 0) -and (-not [string]::IsNullOrWhiteSpace($destinationBox.Text))
@@ -204,9 +195,9 @@ $actions.WrapContents = $false
 $actions.Margin = New-Object System.Windows.Forms.Padding(0, 10, 0, 8)
 
 $scanButton = New-Object System.Windows.Forms.Button
+$scanButton.Text = "1. Scan for files"
 $scanButton.AutoSize = $true
 $scanButton.Padding = New-Object System.Windows.Forms.Padding(14, 6, 14, 6)
-Update-ScanButtonText
 $actions.Controls.Add($scanButton)
 
 $copyButton = New-Object System.Windows.Forms.Button
@@ -262,7 +253,6 @@ $sourceBrowse.Add_Click({ Browse-Source })
 $destinationBrowse.Add_Click({ Browse-Destination })
 $sourceBox.Add_Click({ Browse-Source })
 $destinationBox.Add_Click({ Browse-Destination })
-$fileType.Add_SelectedIndexChanged({ Update-ScanButtonText })
 $cancelButton.Add_Click({ $script:cancelRequested = $true })
 
 $scanButton.Add_Click({

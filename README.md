@@ -13,7 +13,7 @@ Simple Windows GUI app that scans a **Source** folder for `.goo` and/or `.gcode`
 1. Click **Browse…** next to **Source** (or click the Source field) and pick a drive/folder in File Explorer.
 2. Click **Browse…** next to **Destination** and pick your thumb drive (or any folder).
 3. Choose **File type**: `.goo`, `.gcode`, or both.
-4. Click **1. Scan…**.
+4. Click **1. Scan for files**.
 5. Click **2. Copy to destination**.
 
 Optional: leave **Keep folder structure** checked so files from different folders don’t overwrite each other.
